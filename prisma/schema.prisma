@@ -1,0 +1,62 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Site {
+  id              String               @id @default(cuid())
+  token           String               @unique @default(cuid())
+  name            String
+  url             String
+  position        String               @default("bottom-left")
+  intervalSeconds Int                  @default(8)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  platforms       PlatformConnection[]
+}
+
+// One row per review platform (google, google_business_profile, yelp,
+// facebook, trustpilot) a site has connected. `enabled` controls whether its
+// reviews are shown in the widget, independent of whether it's connected.
+model PlatformConnection {
+  id           String    @id @default(cuid())
+  siteId       String
+  site         Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  platform     String
+  enabled      Boolean   @default(true)
+  externalId   String? // Google placeId / Yelp business id / Facebook page id / Trustpilot business unit id / "accountId/locationId" for Google Business Profile
+  accessToken  String? // Facebook page access token, or Google Business Profile OAuth access token
+  refreshToken String? // Google Business Profile OAuth refresh token
+  tokenExpiresAt DateTime? // Google Business Profile OAuth access token expiry
+  label        String? // resolved business name on that platform
+  address      String?
+  rating       Float?
+  reviewCount  Int?
+  lastSyncedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  reviews      Review[]
+
+  @@unique([siteId, platform])
+}
+
+model Review {
+  id             String             @id @default(cuid())
+  connectionId   String
+  connection     PlatformConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  platform       String
+  authorName     String
+  authorPhotoUrl String?
+  rating         Int
+  text           String
+  relativeTime   String?
+  reviewTime     DateTime?
+  createdAt      DateTime           @default(now())
+}
